@@ -137,9 +137,11 @@ class BleScanManager constructor(private val context: Context, private val ioDis
         if (callbackType != -1) {
             if (intent.hasExtra(BluetoothLeScanner.EXTRA_ERROR_CODE)) {
                 val errorCode = intent.getIntExtra(
-                    "android.bluetooth.le.extra.LIST_SCAN_RESULT",
+                    BluetoothLeScanner.EXTRA_ERROR_CODE,
                     -1
                 )
+                Log.e(TAG, "Error code: $errorCode")
+                println("Error code: $errorCode")
                 mutableStateFlowError.tryEmit(errorCode)
                 return false
             }
@@ -201,11 +203,11 @@ class BleScanManager constructor(private val context: Context, private val ioDis
         }
 
     fun multipleLaunchStartStopScan() = runBlocking(ioDispatcher) {
-        for (i in 0..6) {
+        for (i in 0..21) {
             startScan()
-            delay(50)
+            delay(500)
             stopScan()
-            delay(50)
+            delay(500)
         }
     }
 

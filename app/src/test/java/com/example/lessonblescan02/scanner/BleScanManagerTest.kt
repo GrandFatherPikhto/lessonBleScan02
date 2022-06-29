@@ -212,12 +212,14 @@ class BleScanManagerTest {
 
     @Test
     fun multipleLaunchStartStop() = runTest (UnconfinedTestDispatcher()) {
-        for (i in 0..6) {
+        for (i in 0..21) {
             bleScanManager.startScan()
+            assertTrue(bleScanManager.valueScanning)
             delay(50)
             bleScanManager.stopScan()
+            assertFalse(bleScanManager.valueScanning)
             delay(50)
+            assertEquals(-1, bleScanManager.valueError)
         }
-        println("Error: ${bleScanManager.valueError}")
     }
 }
