@@ -13,11 +13,10 @@ import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.example.lessonblescan02.BleScanApplication
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 
 class BleScanManager constructor(private val context: Context, private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO) :
     DefaultLifecycleObserver {
@@ -68,6 +67,24 @@ class BleScanManager constructor(private val context: Context, private val ioDis
         if (context.applicationContext is BleScanApplication) {
             (context.applicationContext as BleScanApplication).bleScanManager = this
         }
+
+        scope.launch {
+            mutableStateFlowDevice.collect {
+                Log.d(TAG, "BLE Device: $it")
+            }
+        }
+
+        scope.launch {
+            mutableStateFlowScanning.collect {
+                Log.d(TAG, "Scanning: $it")
+            }
+        }
+
+        scope.launch {
+            mutableStateFlowError.collect {
+                Log.e(TAG, "Error code: $it")
+            }
+        }
     }
 
     fun startScan(names:List<String> = listOf(),
@@ -77,6 +94,8 @@ class BleScanManager constructor(private val context: Context, private val ioDis
                   notEmitRepeat:Boolean = true
     ) {
         if (!valueScanning) {
+            Log.d(TAG, "startScan()")
+
             this.addresses.clear()
             this.addresses.addAll(addresses)
 
@@ -106,6 +125,7 @@ class BleScanManager constructor(private val context: Context, private val ioDis
 
     fun stopScan() {
         if ( valueScanning ) {
+            Log.d(TAG, "stopScan()")
             bluetoothLeScanner.stopScan(pendingIntent)
             mutableStateFlowScanning.tryEmit(false)
         }
@@ -180,6 +200,14 @@ class BleScanManager constructor(private val context: Context, private val ioDis
             }
         }
 
+    fun multipleLaunchStartStopScan() = runBlocking(ioDispatcher) {
+        for (i in 0..6) {
+            startScan()
+            delay(50)
+            stopScan()
+            delay(50)
+        }
+    }
 
     private fun initDefaultScanSettings() {
         scanSettingsBuilder.setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)

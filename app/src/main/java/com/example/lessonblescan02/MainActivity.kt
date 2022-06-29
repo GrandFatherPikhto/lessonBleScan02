@@ -98,8 +98,10 @@ class MainActivity : AppCompatActivity() {
                 bleScanManager.stateFlowScanning.collect { scanning ->
                     if (scanning) {
                         actionScan.title = getString(R.string.action_stop_scan)
+                        actionScan.setIcon(R.drawable.ic_baseline_man_2_48)
                     } else {
                         actionScan.title = getString(R.string.action_start_scan)
+                        actionScan.setIcon(R.drawable.ic_baseline_directions_run_48)
                     }
                 }
             }
@@ -119,6 +121,10 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     bleScanManager.startScan()
                 }
+                true
+            }
+            R.id.action_test_multiple_launch -> {
+                bleScanManager.multipleLaunchStartStopScan()
                 true
             }
             else -> super.onOptionsItemSelected(item)

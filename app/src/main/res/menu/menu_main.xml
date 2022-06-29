@@ -4,10 +4,15 @@
     tools:context="com.example.lessonblescan02.MainActivity">
     <item
         android:id="@+id/action_scan"
-        android:title="@string/action_start_scan" />
+        android:icon="@drawable/ic_baseline_directions_run_48"
+        android:title="@string/action_start_scan"
+        app:showAsAction="ifRoom" />
     <item
         android:id="@+id/action_settings"
         android:orderInCategory="100"
         android:title="@string/action_settings"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/action_test_multiple_launch"
+        android:title="@string/action_test_multiple_launch" />
 </menu>

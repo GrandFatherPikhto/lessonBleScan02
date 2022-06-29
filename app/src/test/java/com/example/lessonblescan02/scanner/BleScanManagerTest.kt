@@ -11,6 +11,7 @@ import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanRecord
 import com.example.lessonblescan02.BleScanApplication
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
@@ -189,5 +190,34 @@ class BleScanManagerTest {
         bleScanManager.onScanReceived(intent)
         assertEquals(scanResults[6].device.address, bleScanManager.valueDevice!!.address)
         assertFalse(bleScanManager.valueScanning)
+    }
+
+    @Test
+    fun withoutFilters() = runTest (UnconfinedTestDispatcher()){
+        val intent = Intent(bleScanApplication, ScanResult::class.java)
+        intent.action = BleScanReceiver.ACTION_BLE_SCAN
+        val scanResults = mutableListOf<ScanResult>()
+        for (i in 1..7) {
+            scanResults.add(mockScanResult(deviceName = String.format(TEST_NAME, i)))
+        }
+        intent.putParcelableArrayListExtra(BluetoothLeScanner.EXTRA_LIST_SCAN_RESULT,
+            scanResults.toCollection(ArrayList()))
+        bleScanManager.startScan()
+        bleScanManager.onScanReceived(intent)
+        assertEquals(bleScanManager.valueDevice!!.address, scanResults.last().device.address)
+        assertTrue(bleScanManager.valueScanning)
+        bleScanManager.stopScan()
+        assertFalse(bleScanManager.valueScanning)
+    }
+
+    @Test
+    fun multipleLaunchStartStop() = runTest (UnconfinedTestDispatcher()) {
+        for (i in 0..6) {
+            bleScanManager.startScan()
+            delay(50)
+            bleScanManager.stopScan()
+            delay(50)
+        }
+        println("Error: ${bleScanManager.valueError}")
     }
 }

@@ -14,4 +14,5 @@
     <string name="message_stop_scan">Сканирование BLE-устройств остановлено</string>
     <string name="message_permission_granted">Разрешение %1$s получено</string>
     <string name="message_permission_not_granted">Разрешение %1$s не получено</string>
+    <string name="action_test_multiple_launch">Многократные запуск/остановка</string>
 </resources>
