@@ -2,16 +2,16 @@ package com.example.lessonblescan02
 
 import android.app.Application
 import com.example.lessonblescan02.scanner.BleScanManager
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlin.properties.Delegates
 
 class BleScanApplication : Application() {
-    companion object {
-        private const val TAG = "BleScanApplication"
-    }
+    private val mutableStateFlowScanManager = MutableStateFlow<BleScanManager?>(null)
+    val stateFlowScanManager get() = mutableStateFlowScanManager.asStateFlow()
+    val bleScanManager:BleScanManager? get() = mutableStateFlowScanManager.value
 
-    var bleScanManager:BleScanManager? = null
-
-    override fun onCreate() {
-        super.onCreate()
+    fun emitScanManager(bleScanManager: BleScanManager) {
+        mutableStateFlowScanManager.tryEmit(bleScanManager)
     }
 }

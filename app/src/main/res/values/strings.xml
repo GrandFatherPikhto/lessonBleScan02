@@ -16,4 +16,6 @@
     <string name="message_permission_granted">Permission %1$s is granted</string>
     <string name="message_permission_not_granted">Permission %1$s is not granted</string>
     <string name="action_test_multiple_launch">Test multiple launch</string>
+    <string name="default_ble_name">Unknown Device</string>
+    <string name="default_ble_address" translatable="false">00:00:00:00:00:00</string>
 </resources>

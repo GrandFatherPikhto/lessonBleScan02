@@ -1,12 +1,17 @@
-package com.example.lessonblescan02
+package com.example.lessonblescan02.ui.fragments
 
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.navigation.fragment.findNavController
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.lessonblescan02.BleScanApplication
 import com.example.lessonblescan02.databinding.FragmentFirstBinding
+import com.example.lessonblescan02.ui.fragments.adapter.RvBtAdapter
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
@@ -19,21 +24,31 @@ class FirstFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
 
+    private val rvBtAdapter = RvBtAdapter()
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-
+    ): View {
         _binding = FragmentFirstBinding.inflate(inflater, container, false)
         return binding.root
-
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.buttonFirst.setOnClickListener {
-            findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment)
+        binding.apply {
+            rvBtDevices.adapter = rvBtAdapter
+            rvBtDevices.layoutManager = LinearLayoutManager(requireContext())
+        }
+
+        lifecycleScope.launch {
+            (requireContext().applicationContext as BleScanApplication)
+                .stateFlowScanManager.filterNotNull().collect { bleScanManager ->
+                    bleScanManager.sharedFlowDevice.collect { bluetoothDevice ->
+                        rvBtAdapter.addDevice(bluetoothDevice)
+                    }
+                }
         }
     }
 

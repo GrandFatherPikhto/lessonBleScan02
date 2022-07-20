@@ -14,18 +14,26 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.example.lessonblescan02.BleScanApplication
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 
 class BleScanManager constructor(private val context: Context, private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO) :
     DefaultLifecycleObserver {
+    private val logTag = this.javaClass.simpleName
+
     companion object {
-        private const val TAG = "BleScanManager"
         private const val REQUEST_CODE_BLE_SCANNER_PENDING_INTENT = 1000
     }
 
-    private val mutableStateFlowScanning = MutableStateFlow<Boolean>(false)
+    enum class State(val value: Int) {
+        Stopped(0x00),
+        Scanning(0x01),
+        Error(0xFF)
+    }
+
+    private val mutableStateFlowScanning = MutableStateFlow(State.Stopped)
     val stateFlowScanning get() = mutableStateFlowScanning.asStateFlow()
     val valueScanning get() = mutableStateFlowScanning.value
 
@@ -33,9 +41,8 @@ class BleScanManager constructor(private val context: Context, private val ioDis
     val stateFlowError get() = mutableStateFlowError.asStateFlow()
     val valueError get() = mutableStateFlowError.value
 
-    private val mutableStateFlowDevice = MutableStateFlow<BleDevice?>(null)
-    val stateFlowDevice get() = mutableStateFlowDevice.asStateFlow()
-    val valueDevice get() = mutableStateFlowDevice.value
+    private val mutableSharedFlowDevice = MutableSharedFlow<BluetoothDevice>(replay = 100)
+    val sharedFlowDevice get() = mutableSharedFlowDevice.asSharedFlow()
 
     private val scope = CoroutineScope(ioDispatcher)
 
@@ -60,29 +67,32 @@ class BleScanManager constructor(private val context: Context, private val ioDis
     private val uuids          = mutableListOf<ParcelUuid>()
     private var stopOnFind     = false
     private var notEmitRepeat  = true
-    private val scannedDevices = mutableListOf<BleDevice>()
+    private val scannedDevices = mutableListOf<BluetoothDevice>()
+    val devices get() = scannedDevices.toList()
 
     init {
         initDefaultScanSettings()
         if (context.applicationContext is BleScanApplication) {
-            (context.applicationContext as BleScanApplication).bleScanManager = this
+            (context.applicationContext as BleScanApplication).emitScanManager(this)
         }
 
+
+
         scope.launch {
-            mutableStateFlowDevice.collect {
-                Log.d(TAG, "BLE Device: $it")
+            mutableSharedFlowDevice.collect {
+                Log.d(logTag, "BLE Device: $it")
             }
         }
 
         scope.launch {
             mutableStateFlowScanning.collect {
-                Log.d(TAG, "Scanning: $it")
+                Log.d(logTag, "Scanning: $it")
             }
         }
 
         scope.launch {
             mutableStateFlowError.collect {
-                Log.e(TAG, "Error code: $it")
+                Log.e(logTag, "Error code: $it")
             }
         }
     }
@@ -93,8 +103,8 @@ class BleScanManager constructor(private val context: Context, private val ioDis
                   stopOnFind:Boolean = false,
                   notEmitRepeat:Boolean = true
     ) {
-        if (!valueScanning) {
-            Log.d(TAG, "startScan()")
+        if (valueScanning != State.Scanning) {
+            Log.d(logTag, "startScan()")
 
             this.addresses.clear()
             this.addresses.addAll(addresses)
@@ -116,18 +126,18 @@ class BleScanManager constructor(private val context: Context, private val ioDis
                 pendingIntent)
 
             if (res == 0) {
-                mutableStateFlowScanning.tryEmit(true)
+                mutableStateFlowScanning.tryEmit(State.Scanning)
             } else {
-                mutableStateFlowScanning.tryEmit(false)
+                mutableStateFlowScanning.tryEmit(State.Error)
             }
         }
     }
 
     fun stopScan() {
-        if ( valueScanning ) {
-            Log.d(TAG, "stopScan()")
+        if ( valueScanning == State.Scanning ) {
+            Log.d(logTag, "stopScan()")
             bluetoothLeScanner.stopScan(pendingIntent)
-            mutableStateFlowScanning.tryEmit(false)
+            mutableStateFlowScanning.tryEmit(State.Stopped)
         }
     }
 
@@ -140,7 +150,7 @@ class BleScanManager constructor(private val context: Context, private val ioDis
                     BluetoothLeScanner.EXTRA_ERROR_CODE,
                     -1
                 )
-                Log.e(TAG, "Error code: $errorCode")
+                Log.e(logTag, "Error code: $errorCode")
                 println("Error code: $errorCode")
                 mutableStateFlowError.tryEmit(errorCode)
                 return false
@@ -150,15 +160,15 @@ class BleScanManager constructor(private val context: Context, private val ioDis
         return true
     }
 
-    private fun filterName(bleDevice: BleDevice) : Boolean =
+    private fun filterName(bluetoothDevice: BluetoothDevice) : Boolean =
         names.isEmpty()
             .or(names.isNotEmpty()
-                .and(bleDevice.name != null)
-                .and(names.contains(bleDevice.name)))
+                .and(bluetoothDevice.name != null)
+                .and(names.contains(bluetoothDevice.name)))
 
-    private fun filterAddress(bleDevice: BleDevice) : Boolean =
+    private fun filterAddress(bluetoothDevice: BluetoothDevice) : Boolean =
         addresses.isEmpty()
-            .or(addresses.isNotEmpty().and(addresses.contains(bleDevice.address)))
+            .or(addresses.isNotEmpty().and(addresses.contains(bluetoothDevice.address)))
 
     private fun filterUuids(uuids: Array<ParcelUuid>?) : Boolean {
         if (this.uuids.isEmpty()) return true
@@ -169,18 +179,17 @@ class BleScanManager constructor(private val context: Context, private val ioDis
     }
 
     private fun filterDevice (bluetoothDevice: BluetoothDevice) {
-        val bleDevice = BleDevice(bluetoothDevice)
-        if (filterName(bleDevice)
-                .and(filterAddress(bleDevice))
+        if (filterName(bluetoothDevice)
+                .and(filterAddress(bluetoothDevice))
                 .and(filterUuids(bluetoothDevice.uuids)))
-            if(notEmitRepeat.and(!scannedDevices.contains(bleDevice))) {
-                scannedDevices.add(bleDevice)
-                mutableStateFlowDevice.tryEmit(bleDevice)
+            if(notEmitRepeat.and(!scannedDevices.contains(bluetoothDevice))) {
+                scannedDevices.add(bluetoothDevice)
+                mutableSharedFlowDevice.tryEmit(bluetoothDevice)
                 if (stopOnFind) {
                     stopScan()
                 }
             } else {
-                mutableStateFlowDevice.tryEmit(bleDevice)
+                mutableSharedFlowDevice.tryEmit(bluetoothDevice)
             }
     }
 

@@ -1,4 +1,4 @@
-package com.example.lessonblescan02
+package com.example.lessonblescan02.ui
 
 import android.os.Bundle
 import com.google.android.material.snackbar.Snackbar
@@ -11,11 +11,12 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
+import com.example.lessonblescan02.BleScanApplication
+import com.example.lessonblescan02.R
 import com.example.lessonblescan02.databinding.ActivityMainBinding
 import com.example.lessonblescan02.scanner.BleScanManager
 import com.example.lessonblescan02.scanner.RequestPermissions
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlin.system.exitProcess
 
@@ -47,11 +48,6 @@ class MainActivity : AppCompatActivity() {
         appBarConfiguration = AppBarConfiguration(navController.graph)
         setupActionBarWithNavController(navController, appBarConfiguration)
 
-        binding.fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                .setAction("Action", null).show()
-        }
-
         requestPermissions.requestPermissions(listOf (
             "android.permission.ACCESS_COARSE_LOCATION",
             "android.permission.ACCESS_FINE_LOCATION",
@@ -76,7 +72,7 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             bleScanManager.stateFlowScanning.collect { scanning ->
-                if (scanning) {
+                if (scanning == BleScanManager.State.Scanning) {
                     Toast.makeText(baseContext,
                         getString(R.string.message_start_scan),
                             Toast.LENGTH_SHORT).show()
@@ -96,7 +92,7 @@ class MainActivity : AppCompatActivity() {
         menu.findItem(R.id.action_scan).let { actionScan ->
             lifecycleScope.launch {
                 bleScanManager.stateFlowScanning.collect { scanning ->
-                    if (scanning) {
+                    if (scanning == BleScanManager.State.Scanning) {
                         actionScan.title = getString(R.string.action_stop_scan)
                         actionScan.setIcon(R.drawable.ic_baseline_man_2_48)
                     } else {
@@ -116,7 +112,7 @@ class MainActivity : AppCompatActivity() {
         return when (item.itemId) {
             R.id.action_settings -> true
             R.id.action_scan -> {
-                if (bleScanManager.valueScanning) {
+                if (bleScanManager.valueScanning == BleScanManager.State.Scanning) {
                     bleScanManager.stopScan()
                 } else {
                     bleScanManager.startScan()

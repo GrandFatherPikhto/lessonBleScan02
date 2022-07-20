@@ -140,14 +140,17 @@ class BleScanManagerTest {
         intent.action = BleScanReceiver.ACTION_BLE_SCAN
         val scanResults = mutableListOf<ScanResult>()
         for (i in 1..7) {
-            scanResults.add(mockScanResult(deviceName = String.format(TEST_NAME, i)))
+            val scanResult = mockScanResult(deviceName = String.format(TEST_NAME, i))
+            scanResults.add(scanResult)
         }
         intent.putParcelableArrayListExtra(BluetoothLeScanner.EXTRA_LIST_SCAN_RESULT,
             scanResults.toCollection(ArrayList()))
         bleScanManager.startScan(names = listOf(scanResults[2].device.name), stopOnFind = true)
         bleScanManager.onScanReceived(intent)
-        assertEquals(bleScanManager.valueDevice!!.address, scanResults[2].device.address)
-        assertFalse(bleScanManager.valueScanning)
+
+
+        assertEquals(listOf(scanResults[2].device), bleScanManager.devices)
+        assertEquals(BleScanManager.State.Stopped, bleScanManager.valueScanning)
     }
 
     @Test
@@ -162,8 +165,8 @@ class BleScanManagerTest {
             scanResults.toCollection(ArrayList()))
         bleScanManager.startScan(addresses = listOf(scanResults[2].device.address), stopOnFind = true)
         bleScanManager.onScanReceived(intent)
-        assertEquals(bleScanManager.valueDevice!!.address, scanResults[2].device.address)
-        assertFalse(bleScanManager.valueScanning)
+        assertEquals(listOf(scanResults[2].device), bleScanManager.devices)
+        assertEquals(BleScanManager.State.Stopped, bleScanManager.valueScanning)
     }
 
     @Test
@@ -188,8 +191,8 @@ class BleScanManagerTest {
             scanResults.toCollection(ArrayList()))
         bleScanManager.startScan(uuids = uuids2, stopOnFind = true)
         bleScanManager.onScanReceived(intent)
-        assertEquals(scanResults[6].device.address, bleScanManager.valueDevice!!.address)
-        assertFalse(bleScanManager.valueScanning)
+        assertEquals(listOf(scanResults[6].device), bleScanManager.devices)
+        assertEquals(BleScanManager.State.Stopped, bleScanManager.valueScanning)
     }
 
     @Test
@@ -204,20 +207,20 @@ class BleScanManagerTest {
             scanResults.toCollection(ArrayList()))
         bleScanManager.startScan()
         bleScanManager.onScanReceived(intent)
-        assertEquals(bleScanManager.valueDevice!!.address, scanResults.last().device.address)
-        assertTrue(bleScanManager.valueScanning)
+        assertEquals(scanResults.map { it.device }, bleScanManager.devices)
+        assertEquals(BleScanManager.State.Scanning, bleScanManager.valueScanning)
         bleScanManager.stopScan()
-        assertFalse(bleScanManager.valueScanning)
+        assertEquals(BleScanManager.State.Stopped, bleScanManager.valueScanning)
     }
 
     @Test
     fun multipleLaunchStartStop() = runTest (UnconfinedTestDispatcher()) {
         for (i in 0..21) {
             bleScanManager.startScan()
-            assertTrue(bleScanManager.valueScanning)
+            assertEquals(BleScanManager.State.Scanning ,bleScanManager.valueScanning)
             delay(50)
             bleScanManager.stopScan()
-            assertFalse(bleScanManager.valueScanning)
+            assertEquals(BleScanManager.State.Stopped, bleScanManager.valueScanning)
             delay(50)
             assertEquals(-1, bleScanManager.valueError)
         }
